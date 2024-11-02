@@ -1,0 +1,23 @@
+
+Step-01> The dataset (containing 140+ symptoms and 42 diseases) is taken from Kaggle platform.
+Step-02> The dataset's is segregated into 2 categories - part containing the symptoms as the independent factors and part containing the diseases as the dependent factor (i.e. "classes" or "categories" for prediction).
+Step-03> ScikitLearn - Python's library for Machine Learning algorithms - is used to get mathematical modelling algorithms that we will use in the Disease Prediction System, namely :-
+         A. Decision Tree
+         B. Random Forest
+         C. Support Vector Machines (SVM)
+         D. Naive Bayes Classifier
+Step-04> A classification model is made using Decision Tree algorithm with the segregated independent and dependent sets of data.
+Step-05> A classification model is made using Random Forest algorithm with the segregated independent and dependent sets of data.
+Step-06> A classification model is made using Support Vector Machine (SVM) algorithm with the segregated independent and dependent sets of data.
+Step-07> A classification model is made using Naive Bayes Classifier algorithm with the segregated independent and dependent sets of data.
+Step-08> Each of these 4 classifier models take in 4 symptoms as input, prepares the independent set of data accordingly and gives output the disease predicted by the model.
+
+Step-09> Webpage (made using HTML, CSS and JavaScript) collects data about patients' information - age, gender and symptoms.
+         This data is collected in a HTML form.
+Step-10> A server is made using the Flask framework. A HTTP request is sent to this Flask server with the information filled in the HTML form about the patient
+         (The collected data is sent to the Flask server using HTTP method - "POST")  
+Step-11> The data received in server is then parsed in a meaningful way in accordance with the classifier models' input.
+Step-12> The server sends this data to the 4 classifier models for prediction and in return gets 4 diseases (not necessary) predicted by them.
+Step-13> The server sends these diseases as response to the HTTP request made in step-10.
+         (The predicted data is received from the Flask server using HTTP method - "GET")    
+Step-14> The received data (i.e. the diseases) is rendered in the webpage for the user as output. 
