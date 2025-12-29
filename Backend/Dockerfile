@@ -12,15 +12,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
 COPY app.py .
-COPY models ./models
-COPY Data ./Data
+COPY disease_ensemble.py .
+COPY logging_config.py .
+COPY Model ./Model
+COPY Data/Disease_Info.json ./Data/Disease_Info.json
+COPY Data/Symptoms_Info.json ./Data/Symptoms_Info.json
 
 # set environment variables
 ENV FLASK_APP=app.py
-# ENV FLASK_ENV=production
+ENV FLASK_ENV=production
 
 # Expose the Flask port
 EXPOSE 5000
 
 # Run the Flask app
+# CMD ["flask", "run"]
 CMD ["python", "app.py"]

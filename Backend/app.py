@@ -1,11 +1,20 @@
 import json
 import logging
-from flask import Flask, request, jsonify
+import time 
+import uuid
+from flask import Flask, request, jsonify, g, has_request_context
 from flask_cors import CORS
+from flask_limiter import Limiter 
+from flask_limiter.util import get_remote_address
 from flasgger import Swagger
 from marshmallow import Schema, fields, ValidationError
+from werkzeug.exceptions import HTTPException
 import pandas as pd
 import joblib
+
+from logging_config import configure_logger
+from disease_ensemble import DiseaseEnsemble
+
 
 # ---------------------------------------------------------
 # Flask App Initialization
@@ -13,19 +22,25 @@ import joblib
 app = Flask(__name__)
 CORS(app, resources={r"/predict": {"origins": "http://localhost:3000"}})
 swagger = Swagger(app)
+app.config["RATELIMIT_ENABLED"] = True
+app.url_map.strict_slashes = False
+
+
+# ---------------------------------------------------------
+# API Rate Limit
+# ---------------------------------------------------------
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["10 per minute"]
+)
+
 
 # ---------------------------------------------------------
 # Logging Configuration
 # ---------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+logger = configure_logger()
 
-logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------
 # Global Variables (Loaded Once at Startup)
@@ -161,13 +176,46 @@ def load_resources():
 
         MODEL = load_model("./Model/ensemble_pipeline.pkl")
         DISEASE_INFO = load_json_file("./Data/Disease_Info.json")
-        SYMPTOM_INFO = load_json_file("./Data/Symptom_Info.json")
+        SYMPTOM_INFO = load_json_file("./Data/Symptoms_Info.json")
 
         logger.info("Resources loaded successfully.")
 
     except Exception as e:
         logger.critical(f"Failed to initialize resources: {e}")
         raise
+
+
+# ---------------------------------------------------------
+# Correlation IDs of Requests & Request/Response Logging Middleware
+# ---------------------------------------------------------
+@app.before_request
+def add_correlation_id():
+    g.correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+
+
+@app.before_request
+def log_request():
+    g.start_time = time.time()
+    logger.info(f"[REQUEST] {request.method} {request.path} - Body: {request.get_json(silent=True)}")
+
+
+@app.after_request
+def log_response(response):
+    start = getattr(g, "start_time", None)
+    if start is not None:
+        duration = round((time.time() - start) * 1000, 2)
+        logger.info(
+            f"[RESPONSE] {request.method} {request.path} - "
+            f"Status: {response.status_code} - Duration: {duration}ms"
+        )
+    else:
+        # No start_time → request was blocked early (rate limit, static, debugger)
+        logger.info(
+            f"[RESPONSE] {request.method} {request.path} - "
+            f"Status: {response.status_code} - Duration: N/A"
+        )
+
+    return response
 
 
 # ---------------------------------------------------------
@@ -180,6 +228,13 @@ class SymptomSchema(Schema):
         required=True
     )
 
+class DiseaseInfoSchema(Schema):
+    name = fields.String(required=True)
+    description = fields.String(required=True)
+    precautions = fields.List(fields.String(), required=True)
+    severity = fields.String(required=True)
+
+disease_info_schema = DiseaseInfoSchema(many=True)
 symptom_schema = SymptomSchema()
 
 # ---------------------------------------------------------
@@ -191,102 +246,173 @@ def predict():
     Predict top 3 probable diseases based on symptom input.
 
     Expected JSON Input:
-    {
-        "symptoms": {
-            "fever": 1,
-            "cough": 0,
-            "fatigue": 1
+        {
+            "symptoms": {
+                "fever": 1,
+                "cough": 0,
+                "fatigue": 1
+            }
         }
-    }
 
-    Returns:
-    --------
-    JSON response containing enriched predictions.
+    Returns: 
+        JSON response containing enriched predictions.
     ---
     tags:
-        -   Prediction
+      - Prediction
     consumes:
-        -   application/json
+      - application/json
     parameters:
-        -   in: body
-            name: body
-            required: true
-            schema:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            symptoms:
+              type: object
+              additionalProperties:
+                type: integer
+              example:
+                fever: 1
+                cough: 0
+                fatigue: 1
+    responses:
+      200:
+        description: Successful prediction
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            predictions:
+              type: array
+              items:
                 type: object
                 properties:
-                    symptoms:
-                        type: object
-                        additionalProperties:
-                            type: integer
-                        example:
-                            fever: 1
-                            cough: 0
-                            fatigue: 1
-        responses:
-            200:
-                description: Successful prediction
-                schema:
-                    type: object
-                    properties:
-                        success:
-                            type: boolean
-                        predictions:
-                            type: array
-                            items:
-                                type: object
-                                properties:
-                                    id:
-                                        type: number
-                                    name: 
-                                        type: string
-                                    probability:
-                                        type: number
-                                    description:
-                                        type: string
-                                    precautions:
-                                        type: array
-                                        items:
-                                            type: string
-            400:
-                description: Bad request (missing or invalid data)
-            500:
-                description: Internal server error
+                  id:
+                    type: number
+                  name: 
+                    type: string
+                  probability:
+                    type: number
+                  description:
+                    type: string
+                  precautions:
+                    type: array
+                    items:
+                      type: string
+      400:
+        description: Bad request (missing or invalid data)
+      500:
+        description: Internal server error
     """
+    response, status_code = None, None
     try:
         json_data = request.get_json() 
 
         if not json_data: 
-            return jsonify({"error": "Invalid or missing JSON body"}), 400 
+            response = {
+                "success": False, 
+                "error": { 
+                    "type": "BadRequest", 
+                    "message": "Invalid or missing JSON body." 
+                }
+            }
+            status_code = 400 
+        else:
+            # Validate and deserialize 
+            data = symptom_schema.load(json_data) 
+            symptom_dict = data["symptoms"]
+
+            # Convert to DataFrame
+            df_input = build_input_dataframe(symptom_dict)
+
+            # Run prediction
+            predictions = MODEL.predict_top3(df_input)
+
+            # Enrich with disease metadata
+            enriched_output = enrich_predictions(predictions, DISEASE_INFO)
+
+            response = {
+                "success": True,
+                "predictions": enriched_output
+            }
+            status_code = 200
         
-        # Validate and deserialize 
-        data = symptom_schema.load(json_data) 
-        symptom_dict = data["symptoms"]
-
-        # Convert to DataFrame
-        df_input = build_input_dataframe(symptom_dict)
-
-        # Run prediction
-        predictions = MODEL.predict_top3(df_input)
-
-        # Enrich with disease metadata
-        enriched_output = enrich_predictions(predictions, DISEASE_INFO)
-
-        return jsonify({
-            "success": True,
-            "predictions": enriched_output
-        })
-    
     except ValidationError as ve: 
         # Input validation error (400) 
         logger.warning(f"Validation error: {ve.messages}") 
-        return jsonify({"error": "Validation error", "details": ve.messages}), 400 
-    except Exception as e: 
-        logger.error(f"Prediction error: {e}") 
-        return jsonify({"error": "Internal server error"}), 500
+        response = {
+            "success": False, 
+            "error": { 
+                "type": "ValidationError", 
+                "message": "Invalid request payload."
+            } 
+        }
+        status_code = 400
+    finally:
+        return jsonify(response), status_code
+
+
+# ---------------------------------------------------------
+# Global Error Handler
+# ---------------------------------------------------------
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    """
+    Handles all HTTP errors (400, 404, 405, etc.)
+    Ensures consistent JSON output.
+    """
+    logger.warning(f"HTTPException: {e.code} - {e.description}")
+
+    return jsonify({
+        "success": False,
+        "error": {
+            "type": e.__class__.__name__,
+            "message": e.description
+        }
+    }), e.code
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_exception(e):
+    """
+    Handles all unexpected server errors.
+    """
+    logger.error(f"Unhandled Exception: {str(e)}")
+
+    return jsonify({
+        "success": False,
+        "error": {
+            "type": "InternalServerError",
+            "message": "An unexpected error occurred. Please try again later."
+        }
+    }), 500
+
+
+# ---------------------------------------------------------
+# Ready & Health API endpoint
+# ---------------------------------------------------------
+@app.route("/ready")
+def ready():
+    if MODEL is None or DISEASE_INFO is None or SYMPTOM_INFO is None:
+        return jsonify({"ready": False}), 503
+    return jsonify({"ready": True}), 200
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "success": True,
+        "status": "Ok",
+        "service": "disease-prediction-api",
+        "timestamp": time.time()
+    }), 200
 
 
 # ---------------------------------------------------------
 # Run App
 # ---------------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
