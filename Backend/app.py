@@ -21,8 +21,14 @@ from custom_exceptions import UnknownSymptomException
 # Flask App Initialization
 # ---------------------------------------------------------
 app = Flask(__name__)
-CORS(app, resources={r"/predict": {"origins": "http://localhost:3000"}})
+
+CORS(app, resources={
+    r"/predict": {"origins": ["http://localhost:3000"]},
+    r"/symptoms": {"origins": ["http://localhost:3000"]}
+})
+
 swagger = Swagger(app)
+
 app.config["RATELIMIT_ENABLED"] = True
 app.url_map.strict_slashes = False
 
@@ -165,7 +171,7 @@ def enrich_predictions(predictions: list, disease_info: list):
             "id": str(id),
             "name": prediction["disease"].title(),
             "description": description.capitalize(),
-            "precautions": [ precaution.capitalize() for precaution in precautions ],
+            "precautions": [ precaution.capitalize() for precaution in precautions if len(precaution) > 0 ],
             "probability": f"{prediction['probability']} %"
         })
 
@@ -251,6 +257,62 @@ symptom_schema = SymptomSchema()
 # ---------------------------------------------------------
 # API Endpoint
 # ---------------------------------------------------------
+@app.route("/symptoms", methods=["GET"])
+def get_all_symptoms():
+    """
+    Get all symptoms data.
+
+    Returns: 
+        JSON response containing enriched predictions.
+    
+    JSON Response:
+        {
+            "symptoms": [
+                {
+                    'id': 0,
+                    'name': 'Skin Rash', 
+                    'code': 'skin_rash',
+                },
+            ]
+        }
+    ---
+    ---
+    tags:
+      - Symptoms Data
+    consumes:
+      - application/json
+    responses:
+      200:
+        description: Get All Symptoms Data
+        schema:
+          type: object
+          properties:
+            symptoms:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name: 
+                    type: string
+                  code:
+                    type: string
+      500:
+        description: Internal server error
+    """
+    symptom_data = {
+        "symptoms": [
+            {
+                'id': str(symptom['id']),
+                'name': symptom['name'],
+                'code': symptom['code']
+            } for symptom in SYMPTOM_INFO
+        ]
+    }
+    return jsonify(symptom_data), 200
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     """

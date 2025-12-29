@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+	backend:
+        build: ./Backend
+
+        container_name: medipredict-backend
+        ports:
+            - "5000:5000"
+        environment:
+            - FLASK_ENV=production
+        networks:
+            - medinet
+    
+    frontend:
+        build: ./Frontend
+        container_name: medipredict-frontend
+        ports:
+            - "3000:80"
+        depends_on:
+            - backend
+        networks:
+            - medinet
+
+networks:
+    medinet:
+        driver: bridge
