@@ -14,6 +14,7 @@ import joblib
 
 from logging_config import configure_logger
 from disease_ensemble import DiseaseEnsemble
+from custom_exceptions import UnknownSymptomException
 
 
 # ---------------------------------------------------------
@@ -145,17 +146,27 @@ def enrich_predictions(predictions: list, disease_info: list):
         Enriched list of prediction dictionaries.
     """
     enriched = []
-    disease_lookup = {d["name"].lower(): d for d in disease_info}
+    disease_lookup = {d["id"]: d for d in disease_info}
 
-    for pred in predictions:
-        name = pred["disease"].lower()
-        extra = disease_lookup.get(name, {})
+    for prediction in predictions:
+        id = prediction['disease_id']
+        
+        extra = disease_lookup.get(id, {})
+
+        description = extra.get("description", "")
+        precautions = [ 
+            extra.get("precaution1", ""), 
+            extra.get("precaution2", ""), 
+            extra.get("precaution3", ""), 
+            extra.get("precaution4", "") 
+        ]
+        
         enriched.append({
-            "disease": pred["disease"],
-            "probability": pred["probability"],
-            "description": extra.get("description", ""),
-            "precautions": extra.get("precautions", []),
-            "severity": extra.get("severity", "")
+            "id": str(id),
+            "name": prediction["disease"].title(),
+            "description": description.capitalize(),
+            "precautions": [ precaution.capitalize() for precaution in precautions ],
+            "probability": f"{prediction['probability']} %"
         })
 
     return enriched
@@ -294,7 +305,7 @@ def predict():
                   name: 
                     type: string
                   probability:
-                    type: number
+                    type: string
                   description:
                     type: string
                   precautions:
@@ -307,6 +318,7 @@ def predict():
         description: Internal server error
     """
     response, status_code = None, None
+    
     try:
         json_data = request.get_json() 
 
@@ -322,10 +334,18 @@ def predict():
         else:
             # Validate and deserialize 
             data = symptom_schema.load(json_data) 
-            symptom_dict = data["symptoms"]
+            request_symptom_dict = data["symptoms"]
+            
+            all_symptom_dict = { symptom["code"]: 0 for symptom in SYMPTOM_INFO } 
+
+            for request_symptom, is_present in request_symptom_dict.items():
+                if request_symptom in all_symptom_dict:
+                    all_symptom_dict[request_symptom] = is_present
+                else:
+                    raise UnknownSymptomException(f"Unknown symptom code: {request_symptom}")
 
             # Convert to DataFrame
-            df_input = build_input_dataframe(symptom_dict)
+            df_input = build_input_dataframe(all_symptom_dict)
 
             # Run prediction
             predictions = MODEL.predict_top3(df_input)
@@ -350,6 +370,7 @@ def predict():
             } 
         }
         status_code = 400
+
     finally:
         return jsonify(response), status_code
 
@@ -372,6 +393,19 @@ def handle_http_exception(e):
             "message": e.description
         }
     }), e.code
+
+
+@app.errorhandler(UnknownSymptomException)
+def handle_unknown_symptom(e):
+    logger.warning(f"UnknownSymptomException: {str(e)}")
+
+    return jsonify({
+        "success": False,
+        "error": {
+            "type": "UnknownSymptomException",
+            "message": str(e)
+        }
+    }), 400
 
 
 @app.errorhandler(Exception)
@@ -414,5 +448,5 @@ def health():
 # Run App
 # ---------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
 

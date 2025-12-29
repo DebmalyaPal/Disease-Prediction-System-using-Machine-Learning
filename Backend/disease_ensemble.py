@@ -22,7 +22,7 @@ class DiseaseEnsemble:
         return [
             {
                 "disease_id": i,
-                "disease": self.disease_id_name_map[i].capitalize(), 
+                "disease": self.disease_id_name_map[i].title(), 
                 "probability": round(float(probs[j] * 100), 2)
             } for j, i in enumerate(idx)
         ]
