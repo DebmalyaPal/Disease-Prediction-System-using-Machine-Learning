@@ -22,9 +22,11 @@ from custom_exceptions import UnknownSymptomException
 # ---------------------------------------------------------
 app = Flask(__name__)
 
+cors_allowed_url_list = [
+    "http://localhost:3000"
+]
 CORS(app, resources={
-    r"/predict": {"origins": ["http://localhost:3000"]},
-    r"/symptoms": {"origins": ["http://localhost:3000"]}
+    r"/*": {"origins": cors_allowed_url_list}
 })
 
 swagger = Swagger(app)
@@ -257,25 +259,13 @@ symptom_schema = SymptomSchema()
 # ---------------------------------------------------------
 # API Endpoint
 # ---------------------------------------------------------
-@app.route("/symptoms", methods=["GET"])
+@app.route("/api/symptoms", methods=["GET"])
 def get_all_symptoms():
     """
     Get all symptoms data.
 
     Returns: 
         JSON response containing enriched predictions.
-    
-    JSON Response:
-        {
-            "symptoms": [
-                {
-                    'id': 0,
-                    'name': 'Skin Rash', 
-                    'code': 'skin_rash',
-                },
-            ]
-        }
-    ---
     ---
     tags:
       - Symptoms Data
@@ -313,19 +303,10 @@ def get_all_symptoms():
     return jsonify(symptom_data), 200
 
 
-@app.route("/predict", methods=["POST"])
+@app.route("/api/predict", methods=["POST"])
 def predict():
     """
     Predict top 3 probable diseases based on symptom input.
-
-    Expected JSON Input:
-        {
-            "symptoms": {
-                "fever": 1,
-                "cough": 0,
-                "fatigue": 1
-            }
-        }
 
     Returns: 
         JSON response containing enriched predictions.

@@ -1,3 +1,34 @@
+# # Use a lightweight Python base image
+# FROM python:3.9-slim
+
+# # Set working directory inside the container
+# WORKDIR /app
+
+# # Copy requirements first (better for Docker build caching)
+# COPY requirements.txt .
+
+# # Install system dependencies if needed (e.g., for pandas, flask)
+# RUN pip install --no-cache-dir -r requirements.txt
+
+# # Copy the rest of the application code
+# COPY app.py .
+# COPY disease_ensemble.py logging_config.py custom_exceptions.py .
+# COPY Model ./Model
+# COPY Data/Disease_Info.json ./Data/Disease_Info.json
+# COPY Data/Symptoms_Info.json ./Data/Symptoms_Info.json
+
+# # set environment variables
+# ENV FLASK_APP=app.py
+# ENV FLASK_ENV=production
+
+# # Expose the Flask port
+# EXPOSE 5000
+
+# # Run the Flask app
+# # CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# CMD ["python", "app.py"]
+
+
 # Use a lightweight Python base image
 FROM python:3.9-slim
 
@@ -11,12 +42,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
-COPY app.py .
-COPY disease_ensemble.py .
-COPY logging_config.py .
-COPY Model ./Model
-COPY Data/Disease_Info.json ./Data/Disease_Info.json
-COPY Data/Symptoms_Info.json ./Data/Symptoms_Info.json
+COPY . .
 
 # set environment variables
 ENV FLASK_APP=app.py
@@ -24,6 +50,10 @@ ENV FLASK_ENV=production
 
 # Expose the Flask port
 EXPOSE 5000
+
+RUN "mkdir -p ./Model"
+RUN "python nbconvert --to script MLcode_Noteook.ipynb --output notebook.py"
+RUN "python notebook.py && rm notebook.py"
 
 # Run the Flask app
 # CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]

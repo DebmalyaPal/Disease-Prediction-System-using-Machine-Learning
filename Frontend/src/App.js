@@ -24,7 +24,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 
-const API_BASE = "";
+const API_BASE = "/api";
 
 function App() {
 	const [symptoms, setSymptoms] = useState([]);

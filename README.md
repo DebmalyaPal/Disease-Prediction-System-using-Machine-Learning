@@ -1,25 +1,415 @@
-# Disease-Prediction-System-using-Machine-Learning
+# 🩺 MediPredict – Disease Prediction System using Machine Learning
 
-### Tech Stack:
-**BACKEND  :** Python (ML: Pandas, Scikit-Learn, Web Service: Flask)
-**FRONTEND :** React JS  
+MediPredict is an end‑to‑end diagnostic assistant that predicts possible diseases based on user‑reported symptoms.  
+
+It combines **Machine Learning**, a **Flask backend**, and a **React frontend** into a seamless, interactive medical prediction system.
+
+---
+
+## 🚨 Problem Statement
+
+Early diagnosis of diseases is often difficult due to:  
+- Lack of medical awareness  
+- Misinterpretation of symptoms  
+- Limited access to healthcare professionals  
+- Delay in consulting doctors  
+
+Users frequently search symptoms online, leading to **misinformation** and **incorrect self‑diagnosis**.  
+
+There is a need for a **reliable, ML‑powered system** that can:  
+- Understand symptoms  
+- Predict possible diseases  
+- Provide detailed disease information  
+- Assist users in making informed decisions  
+
+---
+
+## ✅ Solution Overview
+
+MediPredict solves this by providing:  
+
+- A **Machine Learning ensemble model** trained on symptom – disease datasets  
+- A **Flask API backend** that handles prediction and symptom retrieval  
+- A **React frontend** that offers a clean, interactive UI  
+- A **Dockerized deployment** for easy replication and production use  
+
+The system predicts the most probable disease and displays:  
+
+- Description  
+- Causes  
+- Precautions  
+- Severity  
+- Recommended actions  
+
+---
+
+## 🧠 Approach & Methodology
+
+### 1. **Dataset Preparation**
+- Symptoms encoded as binary vectors  
+- Diseases mapped to symptom combinations  
+- Cleaned and normalized dataset  
+
+### 2. **Model Training**
+An ensemble of:  
+- Naive Bayes  
+- Random Forest  
+- Decision Tree  
+
+
+The ensemble improves accuracy and reduces model bias.  
+
+### 3. **Backend (Flask)**
+- Exposes `/symptoms` and `/predict` endpoints  
+- Exposes `/ready` and `/health` enpoints  
+- Loads trained ML model  
+- Returns predictions + disease metadata  
+- CORS‑enabled for frontend communication  
+
+### 4. **Frontend (React)**
+- Multi‑step symptom selection  
+- Prediction results with detailed disease info  
+- Responsive UI  
+- Error handling & loading states  
+
+### 5. **Deployment**
+- Docker Compose for multi‑container setup  
+- Nginx serving React build  
+- Flask backend container  
+- Internal networking for secure communication  
+
+---
 
 ## 📁 Project Structure
-
-```bash
-project/
+```
+MediPredict-Disease-Prediction-System-using-Machine-Learning/
 │
-├── backend/
+├── Backend/
 │   ├── app.py
+│   ├── disease_ensemble.py
+│   ├── logging_config.py
+│   ├── custom_exceptions.py
+│   ├── MLCode_Notebook.ipynb
+│   ├── Model/
+│   ├── Data/
 │   ├── requirements.txt
+│   ├── .gitignore
 │   └── Dockerfile
 │
-├── frontend/
-│   ├── package.json
+├── Frontend/
+│   ├── public/
 │   ├── src/
-│   └── Dockerfile
+│   ├── nginx.conf
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── .gitignore
+│   ├── Dockerfile
+│   └── README.md
 │
-└── docker-compose.yml
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🏗️ System Architecture
+
+### 🔹 Flask Backend
+- Hosts ML model  
+- Provides REST API  
+- Handles prediction logic  
+- Serves disease metadata  
+
+### 🔹 ML Prediction Model
+- Ensemble classifier  
+- Trained on symptom–disease dataset  
+- Outputs top disease prediction  
+
+### 🔹 React Frontend
+- User selects symptoms  
+- Sends request to backend  
+- Displays prediction + details  
+
+### 🔹 Dockerized Deployment
+- Nginx → Serves React build  
+- Flask → Runs backend API  
+- Internal Docker network → No CORS issues  
+
+---
+
+### 🏗️ System Architecture Diagram
 
 ```
+┌──────────────────────────┐
+│        React UI          │
+│  (User selects symptoms) │
+└───────────┬──────────────┘
+            │  HTTP Request
+            ▼
+┌──────────────────────────┐
+│          Nginx           │
+│   Serves React build     │
+│  Proxies /api → Backend  │
+└───────────┬──────────────┘
+            │
+            ▼
+┌──────────────────────────┐
+│      Flask Backend       │
+│  /symptoms   /predict    │
+└───────────┬──────────────┘
+            │
+            ▼
+┌──────────────────────────┐
+│    ML Ensemble Model     │
+│  NB + RandomForest + DT  │
+└──────────────────────────┘
+```
+
+
+### 🧠 ML Pipeline Diagram
+
+```
+User Symptoms ──> Symptom Dictionary Encoding ──> Input DataFrame Construction
+                                                            │
+                                                            ▼
+Disease Prediction     <──────────────             Ensemble Classifier
+                                        (Random Forest + Naive Bayes + Decision Tree)
+      │
+      ▼
+Disease Metadata Lookup   ──────────>   Final JSON Response    
+(Description, Precautions)
+```
+
+
+### 🐳 Docker Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        Docker Compose                        │
+└──────────────────────────────────────────────────────────────┘
+          │                                     │
+          ▼                                     ▼
+  ┌──────────────────────┐           ┌──────────────────────┐
+  │   Frontend Container │           │   Backend Container  │
+  │  (Nginx + React App) │           │   (Flask + ML Model) │
+  └───────────┬──────────┘           └───────────┬──────────┘
+              │ Internal Docker Network          |
+              |          (medinet)               │
+              └──────────────────────────────────┘
+```
+
+
+## 🔁 Sequence Diagram for API Calls
+
+```
+User (Browser)
+      │
+      │ 1. Opens React App
+      ▼
+React Frontend
+      │
+      │ 2. GET /symptoms
+      ▼
+Nginx (Proxy)
+      │
+      │ 3. Forward to Flask /symptoms
+      ▼
+Flask Backend
+      │
+      │ 4. Returns symptoms list (JSON)
+      ▼
+React Frontend
+      │
+      │ 5. User selects symptoms
+      ▼
+React Frontend
+      │
+      │ 6. POST /predict { symptoms: [...] }
+      ▼
+Nginx (Proxy)
+      │
+      │ 7. Forward to Flask /predict
+      ▼
+Flask Backend
+      │
+      │ 8. ML Model Predicts Disease
+      │
+      │ 9. Fetch metadata from JSON files
+      ▼
+Flask Backend
+      │
+      │ 10. Return prediction JSON
+      ▼
+React Frontend
+      │
+      │ 11. Display results to user
+      ▼
+User (Browser)
+```
+
+
+### 📡 API Documentation
+
+#### **1. GET `/api/symptoms`**
+Returns the list of all symptoms.
+
+**Response Example:**
+```json
+{
+    "symptoms": [
+        {
+            "id": 0,
+            "name": "Skin Rash", 
+            "code": "skin_rash",
+        },
+        {
+            "id": 1,
+            "name": "Itching", 
+            "code": "itching",
+        },
+    ]
+}
+```
+
+
+#### **2. POST `/api/predict`**
+Predicts disease based on symptoms.
+
+**Request Body:**
+```json
+{  
+    "symptoms": [  
+        {"itching": 1},  
+        {"skin_rash": 1},  
+        {"fatigue": 1}  
+    ]  
+}
+```
+
+**Response Example:**
+```json
+{
+    "predictions": [
+        {
+            "id": 1,
+            "disease": "Fungal infection",
+            "description": "...",
+            "precautions": ["keep infected area dry", "use antifungal powder"],
+            "probability": "64.55%"
+        },
+        {
+            "id": 5,
+            "disease": "Allergy",
+            "description": "...",
+            "precautions": [],
+            "probability": "12.25%"
+        },
+        {
+            "id": 12,
+            "disease": "Drug Reaction",
+            "description": "...",
+            "precautions": ["use antifungal powder"],
+            "probability": "4.49%"
+        }
+    ]
+}
+```
+
+### 📄 API Documentation Using Swagger  
+*(Insert your Swagger image here)*
+
+---
+
+## 🎨 Working Sample
+
+### 🔹 Home Page  
+![Landing Page](./README-assets/LandingPage.png)  
+
+### 🔹 Symptom Selection  
+![Symtoms Loaded & Available for Selection](./README-assets/Symptoms_List.png)  
+
+### 🔹 Prediction Result  
+![Prediction Results - Summary](./README-assets/PredictionResults_Collapsed.png)  
+![Prediction Results - Details](./README-assets/PredictionResults_Expanded.png)  
+
+---
+
+## 🛠️ Local Setup & Running
+
+### [1] Clone the Repository
+```bash
+git clone git@github.com:DebmalyaPal/MediPredict-Disease-Prediction-System-using-Machine-Learning.git
+cd MediPredict-Disease-Prediction-System-using-Machine-Learning
+```
+
+
+### [2A] ▶️ Running Locally
+
+#### BACKEND
+```bash
+cd Backend
+pip install -r requirements.txt
+```
+
+To create our ensemble prediction model and prepare JSON data for own backend - frontend system, we need to execute the contents of our notebook `MLCode_Notebook.ipynb`.  
+We can do so by the following 2 ways:  
+1. Open the notebook `MLCode_Notebook.ipynb` and manually run all the cells.
+2. Convert the notebook to a python script and then run it as a python script.
+```
+python nbconvert
+python notebook.py
+```
+
+Now, we have our Model and JSON data ready to be used by the flask app.
+
+```bash
+python app.py
+```
+
+Backend runs at: `http://localhost:5000`  
+
+
+#### Frontend
+```bash
+cd Frontend
+npm install
+npm start
+```
+
+Frontend runs at: `http://localhost:3000`  
+
+
+### [2B] 🐳 Running with Docker Compose (Recommended)
+
+#### 1️⃣ Build & Start Containers
+```bash
+docker compose up --build
+```
+> Earlier: docker-compose up --build
+
+#### 2️⃣ Access the App
+Frontend: `http://localhost:3000`  
+Backend (internal): `http://medipredict-backend:5000`  
+Backend (external): `http://localhost:5000`
+
+
+---
+
+## 🚀 Production Deployment Notes
+
+- Nginx serves React build  
+- API requests proxied to Flask backend  
+- No CORS issues  
+- Backend not exposed publicly  
+- Fully containerized architecture  
+
+---
+
+## ⭐ Acknowledgements
+
+- Dataset: [Kaggle](#) 
+- ML models built using scikit‑learn  
+- UI built with React  
+- Backend powered by Flask  
 
