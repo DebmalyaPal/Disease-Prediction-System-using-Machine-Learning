@@ -1,59 +1,66 @@
-# # Use a lightweight Python base image
-# FROM python:3.9-slim
+###############################
+# Stage 1 — Build / Training
+###############################
+FROM python:3.9-slim AS builder
 
-# # Set working directory inside the container
-# WORKDIR /app
-
-# # Copy requirements first (better for Docker build caching)
-# COPY requirements.txt .
-
-# # Install system dependencies if needed (e.g., for pandas, flask)
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Copy the rest of the application code
-# COPY app.py .
-# COPY disease_ensemble.py logging_config.py custom_exceptions.py .
-# COPY Model ./Model
-# COPY Data/Disease_Info.json ./Data/Disease_Info.json
-# COPY Data/Symptoms_Info.json ./Data/Symptoms_Info.json
-
-# # set environment variables
-# ENV FLASK_APP=app.py
-# ENV FLASK_ENV=production
-
-# # Expose the Flask port
-# EXPOSE 5000
-
-# # Run the Flask app
-# # CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
-# CMD ["python", "app.py"]
-
-
-# Use a lightweight Python base image
-FROM python:3.9-slim
-
-# Set working directory inside the container
 WORKDIR /app
 
-# Copy requirements first (better for Docker build caching)
+# Copy only requirements first
 COPY requirements.txt .
 
-# Install system dependencies if needed (e.g., for pandas, flask)
+# Install dependencies including Jupyter (needed only for build stage)
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir jupyter
+
+# Copy the relevant part of the project
+COPY Data ./Data
+COPY MLcode_Notebook.ipynb .
+COPY disease_ensemble.py .
+
+# Create model directory
+RUN mkdir -p ./Model
+
+# Convert notebook → script
+RUN jupyter nbconvert --to script MLcode_Notebook.ipynb --output notebook
+
+# Run the script to generate model + json data files
+RUN python notebook.py
+
+# At this point, Model/ contains trained model artifacts and Data/ contains Disease & Symptoms Info JSON files.
+
+
+###############################
+# Stage 2 — Flask App Image
+###############################
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install runtime dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
-COPY . .
+# Copy application code
+COPY app.py .
+COPY custom_exceptions.py .
+COPY disease_ensemble.py .
+COPY logging_config.py .
 
-# set environment variables
+RUN mkdir -p ./Data
+
+# Copy model and data artifacts from builder stage
+COPY --from=builder /app/Model ./Model
+COPY --from=builder /app/Data/Disease_Info.json ./Data/Disease_Info.json
+COPY --from=builder /app/Data/Symptoms_Info.json ./Data/Symptoms_Info.json
+
+# Environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 
-# Expose the Flask port
+# Expose Flask port
 EXPOSE 5000
-
-RUN "mkdir -p ./Model"
-RUN "python nbconvert --to script MLcode_Noteook.ipynb --output notebook.py"
-RUN "python notebook.py && rm notebook.py"
 
 # Run the Flask app
 # CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]

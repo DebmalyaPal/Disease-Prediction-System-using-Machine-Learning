@@ -14,7 +14,9 @@ Early diagnosis of diseases is often difficult due to:
 - Limited access to healthcare professionals  
 - Delay in consulting doctors  
 
-Users frequently search symptoms online, leading to **misinformation** and **incorrect self‑diagnosis**.  
+This challenge became especially visible during the late 2021 period, when the COVID‑19 pandemic had pushed global healthcare systems to their limits. During that time — which is when this project was originally developed — the general public faced unprecedented scarcity of medical resources, overwhelmed hospitals, and significant barriers to reaching qualified healthcare professionals. Even basic consultations became difficult, and many people were left to interpret their symptoms on their own.  
+  
+As a result, individuals increasingly turned to the internet for answers, often encountering misinformation, anxiety‑inducing content, and unreliable self‑diagnosis tools. This environment highlighted the urgent need for accessible, trustworthy, and structured symptom‑based guidance that could help people make informed decisions when professional help wasn’t immediately available.  
 
 There is a need for a **reliable, ML‑powered system** that can:  
 - Understand symptoms  
@@ -26,7 +28,7 @@ There is a need for a **reliable, ML‑powered system** that can:
 
 ## ✅ Solution Overview
 
-MediPredict solves this by providing:  
+**MediPredict** solves this by providing:  
 
 - A **Machine Learning ensemble model** trained on symptom – disease datasets  
 - A **Flask API backend** that handles prediction and symptom retrieval  
@@ -34,18 +36,17 @@ MediPredict solves this by providing:
 - A **Dockerized deployment** for easy replication and production use  
 
 The system predicts the most probable disease and displays:  
-
 - Description  
-- Causes  
-- Precautions  
-- Severity  
-- Recommended actions  
+- Chances  
+- Precautions
+- Recommended Actions  
 
 ---
 
 ## 🧠 Approach & Methodology
 
 ### 1. **Dataset Preparation**
+- Source: [Kaggle](https://www.kaggle.com/datasets/itachi9604/disease-symptom-description-dataset)
 - Symptoms encoded as binary vectors  
 - Diseases mapped to symptom combinations  
 - Cleaned and normalized dataset  
@@ -56,12 +57,11 @@ An ensemble of:
 - Random Forest  
 - Decision Tree  
 
-
 The ensemble improves accuracy and reduces model bias.  
 
 ### 3. **Backend (Flask)**
-- Exposes `/symptoms` and `/predict` endpoints  
-- Exposes `/ready` and `/health` enpoints  
+- Exposes `/api/symptoms` and `/api/predict` endpoints  
+- Exposes /ready and /health endpoints for container orchestration and monitoring  
 - Loads trained ML model  
 - Returns predictions + disease metadata  
 - CORS‑enabled for frontend communication  
@@ -69,7 +69,6 @@ The ensemble improves accuracy and reduces model bias.
 ### 4. **Frontend (React)**
 - Multi‑step symptom selection  
 - Prediction results with detailed disease info  
-- Responsive UI  
 - Error handling & loading states  
 
 ### 5. **Deployment**
@@ -100,7 +99,6 @@ MediPredict-Disease-Prediction-System-using-Machine-Learning/
 │   ├── public/
 │   ├── src/
 │   ├── nginx.conf
-│   ├── Dockerfile
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── .gitignore
@@ -108,6 +106,8 @@ MediPredict-Disease-Prediction-System-using-Machine-Learning/
 │   └── README.md
 │
 ├── docker-compose.yml
+│
+├── README-assets/
 └── README.md
 ```
 
@@ -123,8 +123,8 @@ MediPredict-Disease-Prediction-System-using-Machine-Learning/
 
 ### 🔹 ML Prediction Model
 - Ensemble classifier  
-- Trained on symptom–disease dataset  
-- Outputs top disease prediction  
+- Trained on symptom – disease dataset  
+- Outputs top 3 disease prediction  
 
 ### 🔹 React Frontend
 - User selects symptoms  
@@ -194,13 +194,13 @@ Disease Metadata Lookup   ──────────>   Final JSON Response
   │   Frontend Container │           │   Backend Container  │
   │  (Nginx + React App) │           │   (Flask + ML Model) │
   └───────────┬──────────┘           └───────────┬──────────┘
-              │ Internal Docker Network          |
-              |          (medinet)               │
+              │    Internal Docker Network       |
+              |           (medinet)              │
               └──────────────────────────────────┘
 ```
 
 
-## 🔁 Sequence Diagram for API Calls
+### 🔁 Sequence Diagram
 
 ```
 User (Browser)
@@ -209,11 +209,11 @@ User (Browser)
       ▼
 React Frontend
       │
-      │ 2. GET /symptoms
+      │ 2. GET /api/symptoms
       ▼
 Nginx (Proxy)
       │
-      │ 3. Forward to Flask /symptoms
+      │ 3. Forward to Flask /api/symptoms
       ▼
 Flask Backend
       │
@@ -225,11 +225,11 @@ React Frontend
       ▼
 React Frontend
       │
-      │ 6. POST /predict { symptoms: [...] }
+      │ 6. POST /api/predict { symptoms: [...] }
       ▼
 Nginx (Proxy)
       │
-      │ 7. Forward to Flask /predict
+      │ 7. Forward to Flask /api/predict
       ▼
 Flask Backend
       │
@@ -239,7 +239,7 @@ Flask Backend
       ▼
 Flask Backend
       │
-      │ 10. Return prediction JSON
+      │ 10. Return predictions (JSON)
       ▼
 React Frontend
       │
@@ -252,7 +252,7 @@ User (Browser)
 ### 📡 API Documentation
 
 #### **1. GET `/api/symptoms`**
-Returns the list of all symptoms.
+Returns the list of all symptoms in the system.
 
 **Response Example:**
 ```json
@@ -262,19 +262,20 @@ Returns the list of all symptoms.
             "id": 0,
             "name": "Skin Rash", 
             "code": "skin_rash",
-        },
+        },  
         {
-            "id": 1,
-            "name": "Itching", 
-            "code": "itching",
-        },
-    ]
+            "id": 1,  
+            "name": "Itching",  
+            "code": "itching",  
+        },  
+        ...  
+    ]  
 }
 ```
 
 
 #### **2. POST `/api/predict`**
-Predicts disease based on symptoms.
+Predicts disease(s) based on symptoms.
 
 **Request Body:**
 ```json
@@ -282,7 +283,8 @@ Predicts disease based on symptoms.
     "symptoms": [  
         {"itching": 1},  
         {"skin_rash": 1},  
-        {"fatigue": 1}  
+        {"fatigue": 1},  
+        ...  
     ]  
 }
 ```
@@ -317,7 +319,7 @@ Predicts disease based on symptoms.
 ```
 
 ### 📄 API Documentation Using Swagger  
-*(Insert your Swagger image here)*
+![API Documentation](./README-assets/Swagger_API.png)  
 
 ---
 
@@ -337,6 +339,16 @@ Predicts disease based on symptoms.
 
 ## 🛠️ Local Setup & Running
 
+### System Requirements
+1. **Python** v9.6.x 
+2. **Node JS** v16.20.x
+
+Verify using:
+```bash
+python --version    # v9.6.5
+node --version      # v16.20.2
+```
+
 ### [1] Clone the Repository
 ```bash
 git clone git@github.com:DebmalyaPal/MediPredict-Disease-Prediction-System-using-Machine-Learning.git
@@ -352,22 +364,27 @@ cd Backend
 pip install -r requirements.txt
 ```
 
-To create our ensemble prediction model and prepare JSON data for own backend - frontend system, we need to execute the contents of our notebook `MLCode_Notebook.ipynb`.  
+To create our ensemble prediction model and prepare JSON data for own backend - frontend system, we need to execute the contents of our notebook `MLcode_Notebook.ipynb`.  
 We can do so by the following 2 ways:  
 1. Open the notebook `MLCode_Notebook.ipynb` and manually run all the cells.
 2. Convert the notebook to a python script and then run it as a python script.
 ```
-python nbconvert
+pip install jupyter
+jupyter nbconvert --to script MLcode_Notebook.ipynb --output notebook
+
+mkdir -p Model/
+
 python notebook.py
 ```
 
-Now, we have our Model and JSON data ready to be used by the flask app.
+Now, we have our Model and JSON data ready to be used by the flask app. So, we can proceed with running the flask app.
 
 ```bash
+mkdir -p Model/
 python app.py
 ```
 
-Backend runs at: `http://localhost:5000`  
+Backend (Flask app) runs at: `http://localhost:5000`  
 
 
 #### Frontend
@@ -408,7 +425,7 @@ Backend (external): `http://localhost:5000`
 
 ## ⭐ Acknowledgements
 
-- Dataset: [Kaggle](#) 
+- Dataset: [Kaggle](https://www.kaggle.com/datasets/itachi9604/disease-symptom-description-dataset) 
 - ML models built using scikit‑learn  
 - UI built with React  
 - Backend powered by Flask  

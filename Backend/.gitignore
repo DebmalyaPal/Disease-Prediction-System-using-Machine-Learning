@@ -5,3 +5,4 @@ venv/
 .flaskenv
 Data/Symptoms_Info.json
 Data/Disease_Info.json
+Model/
