@@ -55,7 +55,7 @@ The system predicts the most probable disease and displays:
 An ensemble of:  
 - Naive Bayes  
 - Random Forest  
-- Decision Tree  
+- Support Vector Machine (SVM)  
 
 The ensemble improves accuracy and reduces model bias.  
 
@@ -174,7 +174,7 @@ User Symptoms ──> Symptom Dictionary Encoding ──> Input DataFrame Constr
                                                             │
                                                             ▼
 Disease Prediction     <──────────────             Ensemble Classifier
-                                        (Random Forest + Naive Bayes + Decision Tree)
+      │                                 (Random Forest + Naive Bayes + Decision Tree)
       │
       ▼
 Disease Metadata Lookup   ──────────>   Final JSON Response    
@@ -332,8 +332,8 @@ Predicts disease(s) based on symptoms.
 ![Symtoms Loaded & Available for Selection](./README-assets/Symptoms_List.png)  
 
 ### 🔹 Prediction Result  
-![Prediction Results - Summary](./README-assets/PredictionResults_Collapsed.png)  
-![Prediction Results - Details](./README-assets/PredictionResults_Expanded.png)  
+![Prediction Results](./README-assets/PredictionResults.png)  
+
 
 ---
 
@@ -351,7 +351,7 @@ node --version      # v16.20.2
 
 ### [1] Clone the Repository
 ```bash
-git clone git@github.com:DebmalyaPal/MediPredict-Disease-Prediction-System-using-Machine-Learning.git
+git clone https://github.com/DebmalyaPal/MediPredict-Disease-Prediction-System-using-Machine-Learning.git  
 cd MediPredict-Disease-Prediction-System-using-Machine-Learning
 ```
 
@@ -359,15 +359,30 @@ cd MediPredict-Disease-Prediction-System-using-Machine-Learning
 ### [2A] ▶️ Running Locally
 
 #### BACKEND
+
+1. Get inside `Backend` directory:  
 ```bash
 cd Backend
+```
+
+2. Create a Python virtual environment:  
+```bash
+python -m venv venv
+```  
+  
+3. Activate the virtual environment:  
+Linux: `source venv/bin/activate`  
+Windows: `venv\Scripts\activate`  
+  
+4. Install the required dependencies using the following command:  
+```bash
 pip install -r requirements.txt
 ```
 
-To create our ensemble prediction model and prepare JSON data for own backend - frontend system, we need to execute the contents of our notebook `MLcode_Notebook.ipynb`.  
+5. To create our ensemble prediction model and prepare JSON data for own backend - frontend system, we need to execute the contents of our notebook `MLcode_Notebook.ipynb`.  
 We can do so by the following 2 ways:  
-1. Open the notebook `MLCode_Notebook.ipynb` and manually run all the cells.
-2. Convert the notebook to a python script and then run it as a python script.
+[WAY 1] Open the notebook `MLCode_Notebook.ipynb` and manually run all the cells.  
+[WAY 2] Convert the notebook to a python script and then run it as a python script by following the below steps:  
 ```
 pip install jupyter
 jupyter nbconvert --to script MLcode_Notebook.ipynb --output notebook
@@ -376,25 +391,34 @@ mkdir -p Model/
 
 python notebook.py
 ```
+Now, we have our Model and JSON data ready to be used by the flask app.  
 
-Now, we have our Model and JSON data ready to be used by the flask app. So, we can proceed with running the flask app.
-
+6. Run the flask app.  
 ```bash
-mkdir -p Model/
 python app.py
 ```
+(Other options include running `flask run` command, but this would require setting environment variable `FLASK_APP=app.py`)
 
-Backend (Flask app) runs at: `http://localhost:5000`  
+###### Backend Application starts at: `http://localhost:5000`
 
 
 #### Frontend
+1. Get inside `Backend` directory:  
 ```bash
 cd Frontend
+```
+
+2. Install dependencies  
+```bash
 npm install
+```
+
+3. Start the React Application  
+```bash
 npm start
 ```
 
-Frontend runs at: `http://localhost:3000`  
+###### Frontend Application starts at: `http://localhost:3000`
 
 
 ### [2B] 🐳 Running with Docker Compose (Recommended)

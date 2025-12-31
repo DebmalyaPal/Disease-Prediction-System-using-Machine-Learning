@@ -472,6 +472,22 @@ def handle_unexpected_exception(e):
 # ---------------------------------------------------------
 @app.route("/ready")
 def ready():
+    """
+    Readiness probe endpoint.
+
+    This endpoint is used by container orchestrators (e.g., Docker, Kubernetes)
+    to determine whether the service is fully initialized and ready to accept
+    traffic. It verifies that all critical components — the ML model, disease
+    metadata, and symptom metadata — have been successfully loaded.
+
+    Returns:
+        JSON response:
+            {"ready": True}  -> if all components are loaded
+            {"ready": False} -> if any component is missing
+        HTTP Status:
+            200 OK  -> service is ready
+            503 Service Unavailable -> service is not ready
+    """
     if MODEL is None or DISEASE_INFO is None or SYMPTOM_INFO is None:
         return jsonify({"ready": False}), 503
     return jsonify({"ready": True}), 200
@@ -479,6 +495,23 @@ def ready():
 
 @app.route("/health", methods=["GET"])
 def health():
+    """
+    Liveness probe endpoint.
+
+    This endpoint confirms that the API service is running and responsive.
+    Unlike the /ready endpoint, this does not check whether the ML model or
+    metadata files are loaded — it simply verifies that the Flask application
+    is alive and able to return a response.
+
+    Returns:
+        JSON response containing:
+            - success: boolean indicating service availability
+            - status: simple health message
+            - service: service identifier
+            - timestamp: current server time
+        HTTP Status:
+            200 OK -> service is alive
+    """
     return jsonify({
         "success": True,
         "status": "Ok",

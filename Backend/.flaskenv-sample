@@ -1,4 +1,4 @@
-FLASK_APP=<Flask app script name>
+FLASK_APP=<Flask app script name - eg: app.py>
 FLASK_DEBUG=<0/1>
 FLASK_RUN_HOST=<IP - default 127.0.0.1>
 FLASK_RUN_PORT=<port - default 5000>
